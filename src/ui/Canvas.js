@@ -1,4 +1,4 @@
-// src/ui/Canvas.js
+// achtung/src/ui/Canvas.js
 export class Canvas {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
@@ -7,10 +7,8 @@ export class Canvas {
     }
 
     resize() {
-        this.canvas.width = 800;
-        this.canvas.height = 600;
-        this.ctx.fillStyle = 'black';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.canvas.width = 1000;
+        this.canvas.height = 800;
     }
 
     clear() {

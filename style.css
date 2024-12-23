@@ -1,0 +1,19 @@
+/* achtung/style.css */
+html, body {
+    background-color: black;
+    color: white;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+}
+
+#gameCanvas {
+    height: 100vh;
+    border: 4px solid yellow;
+    background: black;
+    box-sizing: border-box;
+}

@@ -9,9 +9,11 @@ export class Player {
         this.speed = 2;
         this.isAlive = true;
         this.score = 0;
+        this.trail = [];
     }
 
     move() {
+        this.trail.push({ ...this.position });
         this.position.x += Math.cos(this.angle) * this.speed;
         this.position.y += Math.sin(this.angle) * this.speed;
     }
