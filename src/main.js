@@ -45,7 +45,13 @@ function gameLoop() {
                    player.move();
                    
                    if (gameState.checkCollisions(player)) {
-                       player.isAlive = false;
+                      if (player.isAlive) {
+                          player.isAlive = false;
+                          alivePlayers = gameState.players.filter(p => p.isAlive).length
+                          if (alivePlayers > 0) {
+                              gameState.updateScores();
+                          }
+                       }
                    } else {
                        alivePlayers++;
                    }
@@ -53,7 +59,6 @@ function gameLoop() {
            });
 
            if (alivePlayers <= 1) {
-               gameState.updateScores();
                if (gameState.checkWinningCondition()) {
                    currentState = 'home';
                    switchScreen('home');
