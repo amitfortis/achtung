@@ -48,8 +48,8 @@ export class HomeState {
            ctx.fillStyle = player.color;
            ctx.fillText(player.id, startX, y);
            ctx.fillText(player.name, startX + 100, y);
-           ctx.fillText(player.left || '-', startX + 450, y);
-           ctx.fillText(player.right || '-', startX + 650, y);
+           ctx.fillText(player.left || ' ', startX + 450, y);
+           ctx.fillText(player.right || ' ', startX + 650, y);
 
            if (this.selectedPlayer === player) {
                const keyX = this.settingKey === 'left' ? startX + 450 : startX + 650;
@@ -80,8 +80,15 @@ export class HomeState {
            const rowY = headerY + ((i + 1) * rowHeight);
            if (y >= rowY - 35 && y <= rowY + 10) {
                if (x >= startX + 100 && x <= startX + 400) {
-                   this.selectedPlayer = player;
-                   this.settingKey = 'left';
+                   if (this.selectedPlayer === player) {
+                      this.selectedPlayer = null;
+                      this.settingKey = null;
+                      player.left = '';
+                      player.right = '';
+                   } else {
+                       this.selectedPlayer = player;
+                       this.settingKey = 'left';
+                   }
                } else if (x >= startX + 450 && x <= startX + 550 && this.selectedPlayer === player) {
                    this.settingKey = 'left';
                } else if (x >= startX + 650 && x <= startX + 750 && this.selectedPlayer === player) {

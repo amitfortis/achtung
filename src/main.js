@@ -31,23 +31,40 @@ function gameLoop() {
    } else {
        canvas.clear();
        
+       // Draw powerups
+       gameState.powerUps.forEach(powerUp => {
+           powerUp.draw(canvas.ctx);
+       });
+       
        if (gameState.isPlaying && gameState.roundActive) {
            let alivePlayers = 0;
            
            gameState.players.forEach(player => {
                if (player.isAlive) {
-                   if (gameState.controls.isPressed(player.controls.left)) {
-                       player.turn(-1);
-                   }
-                   if (gameState.controls.isPressed(player.controls.right)) {
-                       player.turn(1);
+                   const leftPressed = gameState.controls.isPressed(player.controls.left);
+                   const rightPressed = gameState.controls.isPressed(player.controls.right);
+                   
+                   if (player.isSquareTurn) {
+                       // Handle square turns (single press only)
+                       if (leftPressed && !player.lastPressedKeys.left) {
+                           player.turn(-1);
+                       } else if (rightPressed && !player.lastPressedKeys.right) {
+                           player.turn(1);
+                       }
+                       // Update last pressed state
+                       player.lastPressedKeys.left = leftPressed;
+                       player.lastPressedKeys.right = rightPressed;
+                   } else {
+                       // Normal continuous turning
+                       if (leftPressed) player.turn(-1);
+                       if (rightPressed) player.turn(1);
                    }
                    player.move();
                    
                    if (gameState.checkCollisions(player)) {
                       if (player.isAlive) {
                           player.isAlive = false;
-                          alivePlayers = gameState.players.filter(p => p.isAlive).length
+                          alivePlayers = gameState.players.filter(p => p.isAlive).length;
                           if (alivePlayers > 0) {
                               gameState.updateScores();
                           }
@@ -58,7 +75,13 @@ function gameLoop() {
                }
            });
 
+           // Update and handle powerups
+           gameState.updatePowerUps();
+
            if (alivePlayers <= 1) {
+               // Reset all player effects when round ends
+               gameState.players.forEach(player => player.reset());
+               
                if (gameState.checkWinningCondition()) {
                    currentState = 'home';
                    switchScreen('home');
@@ -69,6 +92,12 @@ function gameLoop() {
            }
        }
 
+       // Draw powerups first
+       gameState.powerUps.forEach(powerUp => {
+           powerUp.draw(canvas.ctx);
+       });
+
+       // Draw players
        gameState.players.forEach(player => {
            const ctx = canvas.ctx;
            
@@ -91,15 +120,30 @@ function gameLoop() {
            }
 
            if (player.isAlive) {
-               ctx.fillStyle = player.color;
-               ctx.beginPath();
-               ctx.arc(player.position.x, player.position.y, 4, 0, Math.PI * 2);
-               ctx.fill();
+               ctx.fillStyle = player.headColor;
+               if (player.isSquareHead) {
+                   // Draw square head
+                   const squareSize = 8;
+                   ctx.fillRect(
+                       player.position.x - squareSize/2,
+                       player.position.y - squareSize/2,
+                       squareSize,
+                       squareSize
+                   );
+               } else {
+                   // Draw circular head
+                   ctx.beginPath();
+                   ctx.arc(player.position.x, player.position.y, 4, 0, Math.PI * 2);
+                   ctx.fill();
+               }
            }
        });
+
+
+
        if (currentState === 'game') {
-       scoreboard.draw(gameState.players);
-    }
+           scoreboard.draw(gameState.players);
+       }
    }
    requestAnimationFrame(gameLoop);
 }
