@@ -3,12 +3,12 @@ export class HomeState {
    constructor(canvas) {
        this.canvas = canvas;
        this.players = [
-           { id: 1, name: 'Fred', color: 'red', left: '', right: '', selected: false },
-           { id: 2, name: 'Greenlee', color: '#00FF00', left: '', right: '', selected: false },
-           { id: 3, name: 'Pinkney', color: '#FF00FF', left: '', right: '', selected: false },
-           { id: 4, name: 'Bluebell', color: 'cyan', left: '', right: '', selected: false },
-           { id: 5, name: 'Willem', color: '#FFA500', left: '', right: '', selected: false },
-           { id: 6, name: 'Greydon', color: 'grey', left: '', right: '', selected: false }
+           { id: 1, name: 'Amit', color: 'red', left: '', right: '', selected: false },
+           { id: 2, name: 'Or', color: '#00FF00', left: '', right: '', selected: false },
+           { id: 3, name: 'Arin', color: '#FF00FF', left: '', right: '', selected: false },
+           { id: 4, name: 'Niv', color: 'cyan', left: '', right: '', selected: false },
+           { id: 5, name: 'Matan', color: '#FFA500', left: '', right: '', selected: false },
+           { id: 6, name: 'Sharon', color: 'grey', left: '', right: '', selected: false }
        ];
        this.selectedPlayer = null;
        this.settingKey = null;

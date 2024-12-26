@@ -4,36 +4,46 @@ export class Player {
        this.name = name;
        this.color = color;
        this.headColor = 'yellow';
-       // Store original state
        this.defaultSpeed = 2;
+       this.defaultHeadRadius = 4;
+       this.defaultLineWidth = 8;
        this.defaultHeadColor = 'yellow';
-       // Controls setup
-       this.originalControls = { left: leftKey, right: rightKey };
-       this.controls = { ...this.originalControls };
-       // Position and movement
+       this.controls = { left: leftKey, right: rightKey };
+       this.originalControls = { ...this.controls };
        this.position = { x, y };
        this.angle = Math.random() * Math.PI * 2;
        this.speed = this.defaultSpeed;
-       // Game state
        this.isAlive = true;
        this.score = 0;
-       // Special states
        this.isSquareTurn = false;
        this.isSquareHead = false;
-       // Trail settings
        this.trail = [];
        this.gapCounter = 0;
        this.gapInterval = Math.random() * 400 + 200;
        this.gapLength = 12;
        this.isGap = false;
+       this.currentLineWidth = this.defaultLineWidth;
+       this.headRadius = this.defaultHeadRadius;
+       this.lastPressedKeys = {
+           left: false,
+           right: false
+       };
+       this.trailSegments = [{
+           startIndex: 0,
+           width: this.defaultLineWidth
+       }];
    }
 
    move() {
        this.gapCounter++;
        if (this.gapCounter >= this.gapInterval) {
            if (!this.isGap) {
-              this.trail.push(null);
-              this.isGap = true;
+               this.trail.push(null);
+               this.trailSegments.push({
+                   startIndex: this.trail.length,
+                   width: this.currentLineWidth
+               });
+               this.isGap = true;
            }
            if (this.gapCounter >= this.gapInterval + this.gapLength) {
                this.gapCounter = 0;
@@ -41,7 +51,14 @@ export class Player {
                this.gapInterval = Math.random() * 400 + 200;
            }
        } else if (!this.isGap) {
-            this.trail.push({ ...this.position });
+           this.trail.push({ ...this.position });
+           if (this.trailSegments.length === 0 ||
+               this.trail.length - 1 === this.trailSegments[this.trailSegments.length - 1].startIndex) {
+               this.trailSegments.push({
+                   startIndex: this.trail.length - 1,
+                   width: this.currentLineWidth
+               });
+           }
        }
 
        this.position.x += Math.cos(this.angle) * this.speed;
@@ -50,18 +67,11 @@ export class Player {
 
    turn(direction) {
        if (this.isSquareTurn) {
-           // Single 90-degree turn
            this.angle = (this.angle + direction * (Math.PI / 2)) % (Math.PI * 2);
        } else {
            this.angle += direction * 0.05;
        }
    }
-
-   // Track which keys were previously pressed
-   lastPressedKeys = {
-       left: false,
-       right: false
-   };
 
    reset() {
        this.speed = this.defaultSpeed;
@@ -69,9 +79,18 @@ export class Player {
        this.controls = { ...this.originalControls };
        this.isSquareTurn = false;
        this.isSquareHead = false;
+       this.currentLineWidth = this.defaultLineWidth;
+       this.headRadius = this.defaultHeadRadius;
+       // Remove trail clearing from here since it's handled in GameState.initializePlayerPositions
+       this.trailSegments = [{
+           startIndex: 0,
+           width: this.defaultLineWidth
+       }];
        this.lastPressedKeys = {
            left: false,
            right: false
        };
+       this.gapCounter = 0;
+       this.isGap = false;
    }
 }
