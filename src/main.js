@@ -12,6 +12,7 @@ const gameScreen = document.getElementById('gameScreen');
 const canvas = new Canvas();
 const homeState = new HomeState(canvas);
 const gameState = new GameState(canvas);
+canvas.setGameState(gameState);
 const scoreboard = new Scoreboard();
 let currentState = 'home';
 
@@ -30,11 +31,13 @@ function gameLoop() {
         homeState.draw();
     } else {
         canvas.clear();
+        gameState.updateBorderOpacity();
         
         if (gameState.isPlaying && gameState.roundActive) {
             let alivePlayers = 0;
             
             gameState.players.forEach(player => {
+                player.updateHeadOpacity();
                 if (player.isAlive) {
                     const leftPressed = gameState.controls.isPressed(player.controls.left);
                     const rightPressed = gameState.controls.isPressed(player.controls.right);
@@ -70,7 +73,6 @@ function gameLoop() {
             gameState.updatePowerUps();
 
             if (alivePlayers <= 1) {
-                gameState.players.forEach(player => player.reset());
                 
                 if (gameState.checkWinningCondition()) {
                     currentState = 'home';
@@ -94,7 +96,6 @@ function gameLoop() {
                 let lastPos = null;
 
                 player.trail.forEach((point, index) => {
-                    // Get current segment width
                     while (segmentIndex < player.trailSegments.length - 1 && 
                            index >= player.trailSegments[segmentIndex + 1].startIndex) {
                         segmentIndex++;
@@ -126,7 +127,7 @@ function gameLoop() {
             }
 
             if (player.isAlive) {
-                canvas.ctx.fillStyle = player.headColor;
+                canvas.ctx.fillStyle = `rgba(255, 255, 0, ${player.headOpacity})`;
                 if (player.isSquareHead) {
                     const squareSize = player.headRadius * 2;
                     canvas.ctx.fillRect(

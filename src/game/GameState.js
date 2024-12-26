@@ -13,6 +13,8 @@ export class GameState {
         this.players = [];
         this.powerUps = [];
         this.timestampWhenPaused = null;
+        this.borderOpacity = 1;
+        this.isBorderWrapActive = false;
     }
 
     initializeGame(players) {
@@ -21,30 +23,45 @@ export class GameState {
         this.powerUps = [];
     }
 
-    checkCollisions(player) {
-        const { x, y } = player.position;
-        const PLAYER_RADIUS = 4;
-        const TRAIL_WIDTH = 4;
+checkCollisions(player) {
+    if (!player.isAlive) return false;
+    
+    const { x, y } = player.position;
+    const PLAYER_RADIUS = 4;
+    const TRAIL_WIDTH = 4;
+    const width = this.canvas.canvas.width;
+    const height = this.canvas.canvas.height;
 
-        if (x - PLAYER_RADIUS <= 0 || x + PLAYER_RADIUS >= this.canvas.canvas.width || 
-            y - PLAYER_RADIUS <= 0 || y + PLAYER_RADIUS >= this.canvas.canvas.height) {
-            return true;
-        }
-
-        return this.players.some(otherPlayer => {
-            const trailToCheck = otherPlayer === player ? 
-                otherPlayer.trail.slice(0, -10) : otherPlayer.trail;
-
-            return trailToCheck.some(point => {
-                if (!point) return false;
-                const dx = point.x - x;
-                const dy = point.y - y;
-                return Math.sqrt(dx * dx + dy * dy) < PLAYER_RADIUS + TRAIL_WIDTH;
-            });
-        });
+    // Handle border wrapping but don't return early
+    const shouldWrap = (this.isBorderWrapActive || player.isBorderWrapEnabled);
+    if (shouldWrap) {
+        if (x < 0) player.position.x = width;
+        if (x > width) player.position.x = 0;
+        if (y < 0) player.position.y = height;
+        if (y > height) player.position.y = 0;
+    } else if (x - PLAYER_RADIUS <= 0 || x + PLAYER_RADIUS >= width || 
+        y - PLAYER_RADIUS <= 0 || y + PLAYER_RADIUS >= height) {
+        return true;
     }
 
-    updatePowerUps() {
+    if (player.isInvincible) {
+        return false;
+    }
+
+    // Always check trail collisions
+    return this.players.some(otherPlayer => {
+        const trailToCheck = otherPlayer === player ? 
+            otherPlayer.trail.slice(0, -10) : otherPlayer.trail;
+
+        return trailToCheck.some(point => {
+            if (!point) return false;
+            const dx = point.x - x;
+            const dy = point.y - y;
+            return Math.sqrt(dx * dx + dy * dy) < PLAYER_RADIUS + TRAIL_WIDTH;
+        });
+    });
+} 
+  updatePowerUps() {
         this.powerUps = this.powerUps.filter(powerUp => {
             if (!powerUp.collected) {
                 this.players.forEach(player => {
@@ -94,13 +111,14 @@ export class GameState {
         });
     }
 
-    startNewRound() {
-        this.initializePlayerPositions();
-        this.powerUps = [];
-        this.readyToStart = true;
-        this.roundActive = false;
-        this.timestampWhenPaused = null;
-    }
+   startNewRound() {
+    this.initializePlayerPositions();
+    this.powerUps = [];
+    this.readyToStart = true;
+    this.roundActive = false;
+    this.isBorderWrapActive = false;
+    this.players.forEach(player => player.resetEffects());
+}
 
     updateScores() {
         let playersAlive = this.players.filter(p => p.isAlive).length;
@@ -128,9 +146,11 @@ export class GameState {
     }
 
     endRound() {
-        this.roundActive = false;
-        this.isPlaying = false;
-        this.timestampWhenPaused = null;
+    this.roundActive = false;
+    this.isPlaying = false;
+    this.isBorderWrapActive = false;
+    this.powerUps = [];
+    this.players.forEach(player => player.resetEffects());
     }
 
     togglePlay() {
@@ -164,4 +184,11 @@ export class GameState {
             }
         }
     }
+    updateBorderOpacity() {
+    if (this.isBorderWrapActive) {
+        this.borderOpacity = 0.3 + Math.abs(Math.sin(Date.now() / 500)) * 0.7;
+    } else {
+        this.borderOpacity = 1;
+    }
+}
 }
