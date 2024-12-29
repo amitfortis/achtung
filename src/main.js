@@ -15,6 +15,7 @@ const gameState = new GameState(canvas);
 canvas.setGameState(gameState);
 const scoreboard = new Scoreboard();
 let currentState = 'home';
+let lastFrameTime = 0;
 
 function switchScreen(screen) {
     if (screen === 'home') {
@@ -26,7 +27,88 @@ function switchScreen(screen) {
     }
 }
 
-function gameLoop() {
+function drawPlayer(player, ctx) {
+    // Draw trail
+    if (player.trail.length > 1 && player.trailSegments.length > 0) {
+        ctx.strokeStyle = player.color;
+        let segmentIndex = 0;
+        let lastPos = null;
+        let currentPath = new Path2D();
+        let currentWidth = player.trailSegments[0].width;
+
+        player.trail.forEach((point, index) => {
+            // Update segment if needed
+            while (segmentIndex < player.trailSegments.length - 1 && 
+                   index >= player.trailSegments[segmentIndex + 1].startIndex) {
+                if (lastPos) {
+                    ctx.lineWidth = currentWidth;
+                    ctx.stroke(currentPath);
+                    currentPath = new Path2D();
+                }
+                segmentIndex++;
+                currentWidth = player.trailSegments[segmentIndex].width;
+            }
+
+            if (!point) {
+                if (lastPos) {
+                    ctx.lineWidth = currentWidth;
+                    ctx.stroke(currentPath);
+                    currentPath = new Path2D();
+                }
+            } else {
+                if (!lastPos) {
+                    currentPath.moveTo(point.x, point.y);
+                } else {
+                    currentPath.lineTo(point.x, point.y);
+                }
+            }
+            lastPos = point;
+        });
+
+        if (lastPos) {
+            ctx.lineWidth = currentWidth;
+            ctx.stroke(currentPath);
+        }
+    }
+
+    // Draw player head
+    if (player.isAlive) {
+        // Draw head trail effect when border wrap is active
+        if (player.isBorderWrapEnabled || gameState.isBorderWrapActive) {
+            ctx.fillStyle = `rgba(${player.headColor === '#0000FF' ? '0,0,255' : '255,255,0'}, ${player.headOpacity})`;
+        } else {
+            ctx.fillStyle = player.headColor === '#0000FF' ? 'blue' : 'yellow';
+        }
+
+        if (player.isSquareHead) {
+            const squareSize = player.headRadius * 2;
+            ctx.fillRect(
+                player.position.x - squareSize/2,
+                player.position.y - squareSize/2,
+                squareSize,
+                squareSize
+            );
+        } else {
+            ctx.beginPath();
+            ctx.arc(player.position.x, player.position.y, player.headRadius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Draw invincibility indicator
+        if (player.isInvincible) {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(player.position.x, player.position.y, player.headRadius * 1.5, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    }
+}
+
+function gameLoop(timestamp) {
+    const deltaTime = timestamp - lastFrameTime;
+    lastFrameTime = timestamp;
+
     if (currentState === 'home') {
         homeState.draw();
     } else {
@@ -36,9 +118,12 @@ function gameLoop() {
         if (gameState.isPlaying && gameState.roundActive) {
             let alivePlayers = 0;
             
+            // Update players
             gameState.players.forEach(player => {
                 player.updateHeadOpacity();
+                
                 if (player.isAlive) {
+                    // Handle controls
                     const leftPressed = gameState.controls.isPressed(player.controls.left);
                     const rightPressed = gameState.controls.isPressed(player.controls.right);
                     
@@ -54,6 +139,7 @@ function gameLoop() {
                         if (leftPressed) player.turn(-1);
                         if (rightPressed) player.turn(1);
                     }
+                    
                     player.move();
                     
                     if (gameState.checkCollisions(player)) {
@@ -70,10 +156,11 @@ function gameLoop() {
                 }
             });
 
+            // Update and spawn power-ups
             gameState.updatePowerUps();
 
+            // Check round end conditions
             if (alivePlayers <= 1) {
-                
                 if (gameState.checkWinningCondition()) {
                     currentState = 'home';
                     switchScreen('home');
@@ -83,67 +170,19 @@ function gameLoop() {
             }
         }
 
-        // Draw powerups
+        // Draw power-ups
         gameState.powerUps.forEach(powerUp => {
-            powerUp.draw(canvas.ctx);
+            if (!powerUp.collected) {
+                powerUp.draw(canvas.ctx);
+            }
         });
 
-        // Draw players
+        // Draw all players
         gameState.players.forEach(player => {
-            if (player.trail.length > 1) {
-                canvas.ctx.strokeStyle = player.color;
-                let segmentIndex = 0;
-                let lastPos = null;
-
-                player.trail.forEach((point, index) => {
-                    while (segmentIndex < player.trailSegments.length - 1 && 
-                           index >= player.trailSegments[segmentIndex + 1].startIndex) {
-                        segmentIndex++;
-                    }
-                    canvas.ctx.lineWidth = player.trailSegments[segmentIndex].width;
-
-                    if (point === null) {
-                        if (lastPos) {
-                            canvas.ctx.stroke();
-                            canvas.ctx.beginPath();
-                        }
-                    } else {
-                        if (!lastPos) {
-                            canvas.ctx.beginPath();
-                            canvas.ctx.moveTo(point.x, point.y);
-                        } else {
-                            canvas.ctx.lineTo(point.x, point.y);
-                            canvas.ctx.stroke();
-                            canvas.ctx.beginPath();
-                            canvas.ctx.moveTo(point.x, point.y);
-                        }
-                    }
-                    lastPos = point;
-                });
-                
-                if (lastPos) {
-                    canvas.ctx.stroke();
-                }
-            }
-
-            if (player.isAlive) {
-                canvas.ctx.fillStyle = `rgba(255, 255, 0, ${player.headOpacity})`;
-                if (player.isSquareHead) {
-                    const squareSize = player.headRadius * 2;
-                    canvas.ctx.fillRect(
-                        player.position.x - squareSize/2,
-                        player.position.y - squareSize/2,
-                        squareSize,
-                        squareSize
-                    );
-                } else {
-                    canvas.ctx.beginPath();
-                    canvas.ctx.arc(player.position.x, player.position.y, player.headRadius, 0, Math.PI * 2);
-                    canvas.ctx.fill();
-                }
-            }
+            drawPlayer(player, canvas.ctx);
         });
 
+        // Update scoreboard
         if (currentState === 'game') {
             scoreboard.draw(gameState.players);
         }
@@ -151,6 +190,7 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
+// Event listeners
 window.addEventListener('keydown', (e) => {
     if (currentState === 'home') {
         if (e.key === ' ' && homeState.getSelectedPlayers().length >= 2) {
@@ -158,16 +198,23 @@ window.addEventListener('keydown', (e) => {
             switchScreen('game');
             const selectedPlayers = homeState.getSelectedPlayers();
             const players = selectedPlayers.map(p => 
-                new Player(p.name, p.color, p.left.toLowerCase(), p.right.toLowerCase(), 
+                new Player(
+                    p.name, 
+                    p.color, 
+                    p.left.toLowerCase(), 
+                    p.right.toLowerCase(), 
                     Math.random() * (canvas.canvas.width - 100) + 50,
-                    Math.random() * (canvas.canvas.height - 100) + 50)
+                    Math.random() * (canvas.canvas.height - 100) + 50
+                )
             );
             gameState.initializeGame(players);
         } else {
             homeState.handleKeyPress(e.key);
         }
     } else {
-        if (e.key === ' ') gameState.togglePlay();
+        if (e.key === ' ') {
+            gameState.togglePlay();
+        }
         if (e.key === 'Escape') {
             currentState = 'home';
             switchScreen('home');
@@ -175,4 +222,5 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-gameLoop();
+// Start the game loop
+requestAnimationFrame(gameLoop);

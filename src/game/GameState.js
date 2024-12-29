@@ -15,6 +15,7 @@ export class GameState {
         this.timestampWhenPaused = null;
         this.borderOpacity = 1;
         this.isBorderWrapActive = false;
+        this.spawnRate = 0.003; // 0.3% spawn rate
     }
 
     initializeGame(players) {
@@ -23,105 +24,158 @@ export class GameState {
         this.powerUps = [];
     }
 
-checkCollisions(player) {
-    if (!player.isAlive) return false;
-    
-    const { x, y } = player.position;
-    const PLAYER_RADIUS = 4;
-    const TRAIL_WIDTH = 4;
-    const width = this.canvas.canvas.width;
-    const height = this.canvas.canvas.height;
+    checkCollisions(player) {
+        if (!player.isAlive) return false;
+        
+        const { x, y } = player.position;
+        const currentRadius = player.getCurrentCollisionRadius();
+        const width = this.canvas.canvas.width;
+        const height = this.canvas.canvas.height;
 
-    // Handle border wrapping but don't return early
-    const shouldWrap = (this.isBorderWrapActive || player.isBorderWrapEnabled);
-    if (shouldWrap) {
-        if (x < 0) player.position.x = width;
-        if (x > width) player.position.x = 0;
-        if (y < 0) player.position.y = height;
-        if (y > height) player.position.y = 0;
-    } else if (x - PLAYER_RADIUS <= 0 || x + PLAYER_RADIUS >= width || 
-        y - PLAYER_RADIUS <= 0 || y + PLAYER_RADIUS >= height) {
-        return true;
-    }
+        // Handle border wrapping
+        const shouldWrap = (this.isBorderWrapActive || player.isBorderWrapEnabled);
+        if (shouldWrap) {
+            if (x < 0) player.position.x = width;
+            if (x > width) player.position.x = 0;
+            if (y < 0) player.position.y = height;
+            if (y > height) player.position.y = 0;
+        } else if (x - currentRadius <= 0 || x + currentRadius >= width || 
+                  y - currentRadius <= 0 || y + currentRadius >= height) {
+            return true;
+        }
 
-    if (player.isInvincible) {
-        return false;
-    }
+        if (player.isInvincible) {
+            return false;
+        }
 
-    // Always check trail collisions
-    return this.players.some(otherPlayer => {
-        const trailToCheck = otherPlayer === player ? 
-            otherPlayer.trail.slice(0, -10) : otherPlayer.trail;
+        // Check trail collisions with dynamic radius
+        return this.players.some(otherPlayer => {
+            // Skip last few points of own trail to prevent self-collision at head
+            const trailToCheck = otherPlayer === player ? 
+                otherPlayer.trail.slice(0, -10) : otherPlayer.trail;
 
-        return trailToCheck.some(point => {
-            if (!point) return false;
-            const dx = point.x - x;
-            const dy = point.y - y;
-            return Math.sqrt(dx * dx + dy * dy) < PLAYER_RADIUS + TRAIL_WIDTH;
-        });
-    });
-} 
-  updatePowerUps() {
-        this.powerUps = this.powerUps.filter(powerUp => {
-            if (!powerUp.collected) {
-                this.players.forEach(player => {
-                    if (player.isAlive && powerUp.checkCollision(player)) {
-                        powerUp.apply(this, player);
-                    }
-                });
-                return true;
-            } else {
-                if (!this.isPlaying) {
-                    return true;
+            let segmentIndex = 0;
+            return trailToCheck.some((point, index) => {
+                if (!point) return false;
+
+                // Update segment index if needed
+                while (segmentIndex < otherPlayer.trailSegments.length - 1 && 
+                       index >= otherPlayer.trailSegments[segmentIndex + 1].startIndex) {
+                    segmentIndex++;
                 }
-                return !powerUp.update(this);
+
+                // Get current segment width for collision
+                const segmentWidth = otherPlayer.trailSegments[segmentIndex].width / 2;
+                const dx = point.x - x;
+                const dy = point.y - y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                return distance < (currentRadius + segmentWidth);
+            });
+        });
+    }
+
+   updatePowerUps() {
+    // Update existing powerups
+    this.powerUps = this.powerUps.filter(powerUp => {
+        if (!powerUp.collected) {
+            this.players.forEach(player => {
+                if (player.isAlive && powerUp.checkCollision(player)) {
+                    powerUp.apply(this, player);
+                }
+            });
+            return true;
+        } else {
+            if (!this.isPlaying) {
+                return true;
             }
+            return !powerUp.update(this);
+        }
+    });
+
+    // Spawn new powerups
+    if (this.isPlaying && Math.random() < this.spawnRate) {
+        const newPowerUp = new PowerUp(this.canvas, this.getRandomPowerUpType());
+        // Verify position isn't overlapping
+        const isValidPosition = !this.powerUps.some(existingPowerUp => {
+            if (existingPowerUp.collected) return false;
+            const dx = existingPowerUp.position.x - newPowerUp.position.x;
+            const dy = existingPowerUp.position.y - newPowerUp.position.y;
+            return Math.sqrt(dx * dx + dy * dy) < newPowerUp.radius * 3;
         });
 
-        if (this.isPlaying) {
-            const newPowerUp = PowerUp.spawnPowerUp(this.canvas);
-            if (newPowerUp) {
-                this.powerUps.push(newPowerUp);
-            }
+        if (isValidPosition) {
+            this.powerUps.push(newPowerUp);
         }
     }
+}
 
+getRandomPowerUpType() {
+    const types = Object.values(PowerUp.TYPES);
+    return types[Math.floor(Math.random() * types.length)];
+}
     initializePlayerPositions() {
+        const minDistance = 100; // Minimum distance between players
+        const padding = 50;   // Padding from borders
+
+        const positions = [];
         this.players.forEach(player => {
-            player.speed = 2;
-            player.headColor = 'yellow';
-            player.controls = { 
-                left: player.originalControls?.left || player.controls.left,
-                right: player.originalControls?.right || player.controls.right 
-            };
-            player.position = {
-                x: Math.random() * (this.canvas.canvas.width - 100) + 50,
-                y: Math.random() * (this.canvas.canvas.height - 100) + 50
-            };
+            let validPosition = false;
+            let attempts = 0;
+            let newPos;
+
+            // Try to find a valid position
+            while (!validPosition && attempts < 100) {
+                newPos = {
+                    x: Math.random() * (this.canvas.canvas.width - 2 * padding) + padding,
+                    y: Math.random() * (this.canvas.canvas.height - 2 * padding) + padding
+                };
+
+                // Check distance from other players
+                validPosition = !positions.some(pos => {
+                    const dx = newPos.x - pos.x;
+                    const dy = newPos.y - pos.y;
+                    return Math.sqrt(dx * dx + dy * dy) < minDistance;
+                });
+
+                attempts++;
+            }
+
+            // Reset player state
+            player.position = newPos;
             player.angle = Math.random() * Math.PI * 2;
             player.isAlive = true;
             player.trail = [];
+            player.resetEffects();
             
+            // Initialize trail
             for (let i = 0; i < 5; i++) {
                 player.trail.push({
                     x: player.position.x - (Math.cos(player.angle) * i * 5),
                     y: player.position.y - (Math.sin(player.angle) * i * 5)
                 });
             }
+
+            positions.push(newPos);
         });
     }
 
    startNewRound() {
-    this.initializePlayerPositions();
-    this.powerUps = [];
-    this.readyToStart = true;
-    this.roundActive = false;
-    this.isBorderWrapActive = false;
-    this.players.forEach(player => player.resetEffects());
-}
+        // This is called when space is pressed
+        this.initializePlayerPositions();
+        this.powerUps = [];  // Now we clear power-ups
+        this.readyToStart = true;
+        this.roundActive = false;
+        this.isBorderWrapActive = false;
+        
+        // Reset players when actually starting new round
+        this.players.forEach(player => {
+            player.reset();
+        });
+    }  
 
-    updateScores() {
-        let playersAlive = this.players.filter(p => p.isAlive).length;
+  updateScores() {
+        const playersAlive = this.players.filter(p => p.isAlive).length;
         if (playersAlive >= 1) {
             this.players.forEach(player => {
                 if (player.isAlive && playersAlive < this.players.length) {
@@ -146,13 +200,11 @@ checkCollisions(player) {
     }
 
     endRound() {
-    this.roundActive = false;
-    this.isPlaying = false;
-    this.isBorderWrapActive = false;
-    this.powerUps = [];
-    this.players.forEach(player => player.resetEffects());
+        this.roundActive = false;
+        this.isPlaying = false;
+        this.isBorderWrapActive = false;
+        
     }
-
     togglePlay() {
         if (!this.roundActive && !this.readyToStart) {
             this.startNewRound();
@@ -184,11 +236,12 @@ checkCollisions(player) {
             }
         }
     }
+
     updateBorderOpacity() {
-    if (this.isBorderWrapActive) {
-        this.borderOpacity = 0.3 + Math.abs(Math.sin(Date.now() / 500)) * 0.7;
-    } else {
-        this.borderOpacity = 1;
+        if (this.isBorderWrapActive) {
+            this.borderOpacity = 0.3 + Math.abs(Math.sin(Date.now() / 500)) * 0.7;
+        } else {
+            this.borderOpacity = 1;
+        }
     }
-}
 }
