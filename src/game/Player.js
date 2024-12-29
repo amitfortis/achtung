@@ -112,9 +112,9 @@ export class Player {
             case 'swap':
                 if (!this.otherEffects.has(type)) {
                     this.otherEffects.set(type, []);
+                    this.swapControls();
                 }
                 this.otherEffects.get(type).push(effect);
-                this.swapControls();
                 this.headColor = '#0000FF';
                 break;
 
@@ -324,18 +324,15 @@ export class Player {
         this.currentLineWidth = this.defaultLineWidth;
         this.headRadius = this.defaultHeadRadius;
         
-        // Reset all states
         this.isSquareTurn = false;
         this.isSquareHead = false;
         this.isInvincible = false;
         this.isBorderWrapEnabled = false;
         
-        // Clear all effects
         this.speedEffects = [];
         this.widthEffects = [];
         this.otherEffects.clear();
         
-        // Reset trail with initial direction indicator
         this.trail = [];
         for (let i = 0; i < 5; i++) {
             this.trail.push({
@@ -349,13 +346,11 @@ export class Player {
             width: this.defaultLineWidth
         }];
         
-        // Reset input tracking
         this.lastPressedKeys = {
             left: false,
             right: false
         };
         
-        // Reset gap-related properties
         this.gapCounter = 0;
         this.isGap = false;
         this.gapInterval = Math.random() * 400 + 200;
@@ -372,7 +367,6 @@ export class Player {
         this.currentLineWidth = this.defaultLineWidth;
         this.headRadius = this.defaultHeadRadius;
         
-        // Clear all effects
         this.speedEffects = [];
         this.widthEffects = [];
         this.otherEffects.clear();
