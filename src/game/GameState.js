@@ -15,7 +15,7 @@ export class GameState {
         this.timestampWhenPaused = null;
         this.borderOpacity = 1;
         this.isBorderWrapActive = false;
-        this.spawnRate = 0.01; // 0.3% spawn rate
+        this.spawnRate = 0.005; 
     }
 
     initializeGame(players) {
