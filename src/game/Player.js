@@ -149,13 +149,13 @@ export class Player {
         let multiplier = 1;
         this.speedEffects = this.speedEffects.filter(effect => !effect.isExpired());
         
-        for (const effect of this.speedEffects) {
-            if (effect.type === 'speed') {
-                multiplier *= 2;
-            } else if (effect.type === 'slow') {
-                multiplier *= 0.5;
-            }
-        }
+        // Group effects by type
+        const speedEffects = this.speedEffects.filter(e => e.type === 'speed');
+        const slowEffects = this.speedEffects.filter(e => e.type === 'slow');
+        
+        // Apply only strongest effect from each type
+        if (speedEffects.length) multiplier *= 2;
+        if (slowEffects.length) multiplier *= 0.5;
         
         this.speed = this.defaultSpeed * multiplier;
     }

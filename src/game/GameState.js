@@ -15,7 +15,8 @@ export class GameState {
         this.timestampWhenPaused = null;
         this.borderOpacity = 1;
         this.isBorderWrapActive = false;
-        this.spawnRate = 0.005; 
+        this.baseSpawnRate = 0.005;
+        this.spawnRate = this.baseSpawnRate;
     }
 
     initializeGame(players) {
@@ -243,10 +244,13 @@ getRandomPowerUpType() {
     }
 
     updateBorderOpacity() {
-        if (this.isBorderWrapActive) {
-            this.borderOpacity = 0.3 + Math.abs(Math.sin(Date.now() / 500)) * 0.7;
+        if (this.isBorderWrapActive && this.powerUps.some(p => 
+            p.type === PowerUp.TYPES.BORDER_WRAP && 
+            p.color === '#0000FF' && 
+            p.collected
+        )) {
+            this.borderOpacity = 0.1 + Math.abs(Math.sin(Date.now() / 300)) * 0.9;
         } else {
             this.borderOpacity = 1;
         }
-    }
-}
+}}
