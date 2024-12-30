@@ -17,6 +17,8 @@ export class GameState {
         this.isBorderWrapActive = false;
         this.baseSpawnRate = 0.005;
         this.spawnRate = this.baseSpawnRate;
+        this.showWinScreen = false;
+        this.winner = null;
     }
 
     initializeGame(players) {
@@ -199,7 +201,9 @@ getRandomPowerUpType() {
         const secondHighestScore = sortedPlayers[1]?.score || 0;
 
         if (highestScore >= this.targetScore && (highestScore - secondHighestScore) >= 2) {
-            this.players.forEach(player => player.reset());
+            this.showWinScreen = true;
+            this.winner = sortedPlayers[0];
+            this.isPlaying = false;
             return true;
         }
         return false;

@@ -162,8 +162,7 @@ function gameLoop(timestamp) {
             // Check round end conditions
             if (alivePlayers <= 1) {
                 if (gameState.checkWinningCondition()) {
-                    currentState = 'home';
-                    switchScreen('home');
+                    gameState.showWinScreen = true;
                 } else {
                     gameState.endRound();
                 }
@@ -192,35 +191,40 @@ function gameLoop(timestamp) {
 
 // Event listeners
 window.addEventListener('keydown', (e) => {
-    if (currentState === 'home') {
-        if (e.key === ' ' && homeState.getSelectedPlayers().length >= 2) {
-            currentState = 'game';
-            switchScreen('game');
-            const selectedPlayers = homeState.getSelectedPlayers();
-            const players = selectedPlayers.map(p => 
-                new Player(
-                    p.name, 
-                    p.color, 
-                    p.left.toLowerCase(), 
-                    p.right.toLowerCase(), 
-                    Math.random() * (canvas.canvas.width - 100) + 50,
-                    Math.random() * (canvas.canvas.height - 100) + 50
-                )
-            );
-            gameState.initializeGame(players);
-        } else {
-            homeState.handleKeyPress(e.key);
-        }
-    } else {
-        if (e.key === ' ') {
-            gameState.togglePlay();
-        }
-        if (e.key === 'Escape') {
-            currentState = 'home';
-            switchScreen('home');
-        }
-    }
+   if (currentState === 'home') {
+       if (e.key === ' ' && homeState.getSelectedPlayers().length >= 2) {
+           currentState = 'game';
+           switchScreen('game');
+           const selectedPlayers = homeState.getSelectedPlayers();
+           const players = selectedPlayers.map(p => 
+               new Player(
+                   p.name, 
+                   p.color, 
+                   p.left.toLowerCase(), 
+                   p.right.toLowerCase(), 
+                   Math.random() * (canvas.canvas.width - 100) + 50,
+                   Math.random() * (canvas.canvas.height - 100) + 50
+               )
+           );
+           gameState.initializeGame(players);
+       } else {
+           homeState.handleKeyPress(e.key);
+       }
+   } else {
+       if (e.key === ' ' && gameState.showWinScreen) {
+           gameState.showWinScreen = false;
+           gameState.winner = null;
+           currentState = 'home';
+           switchScreen('home');
+           gameState.players.forEach(player => player.reset());
+       } else if (e.key === ' ') {
+           gameState.togglePlay();
+       }
+       if (e.key === 'Escape') {
+           currentState = 'home';
+           switchScreen('home');
+       }
+   }
 });
-
 // Start the game loop
 requestAnimationFrame(gameLoop);
