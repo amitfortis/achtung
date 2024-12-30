@@ -15,12 +15,14 @@ export class Canvas {
         this.canvas.height = 800;
     }
 
-    clear() {
+   clear() {
     this.ctx.fillStyle = 'black';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     
-    // Draw border with opacity
-    this.ctx.strokeStyle = `rgba(255, 255, 0, ${this.gameState.borderOpacity})`;
+    // Draw border
+    this.ctx.strokeStyle = 'yellow';
     this.ctx.lineWidth = 4;
-    this.ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
+    if (this.gameState?.borderOpacity > 0) {
+        this.ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
+    }
 }}

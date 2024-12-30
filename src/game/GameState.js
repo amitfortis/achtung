@@ -243,14 +243,16 @@ getRandomPowerUpType() {
         }
     }
 
-    updateBorderOpacity() {
-        if (this.isBorderWrapActive && this.powerUps.some(p => 
+   updateBorderOpacity() {
+        const hasActiveBlueBorderWrap = this.powerUps.some(p => 
             p.type === PowerUp.TYPES.BORDER_WRAP && 
             p.color === '#0000FF' && 
             p.collected
-        )) {
-            this.borderOpacity = 0.1 + Math.abs(Math.sin(Date.now() / 300)) * 0.9;
+        );
+
+        if (this.isBorderWrapActive && hasActiveBlueBorderWrap) {
+            this.borderOpacity = Math.round(Math.sin(Date.now() / 200));
         } else {
-            this.borderOpacity = 1;
+            this.borderOpacity = 1; // Always opaque when no blue border wrap
         }
 }}
