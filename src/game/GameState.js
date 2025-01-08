@@ -27,7 +27,7 @@ export class GameState {
         this.powerUps = [];
     }
 
-    checkCollisions(player) {
+ checkCollisions(player) {
     if (!player.isAlive) return false;
     
     const { x, y } = player.position;
@@ -35,9 +35,7 @@ export class GameState {
     const width = this.canvas.canvas.width;
     const height = this.canvas.canvas.height;
 
-    // Handle border wrapping
-    const shouldWrap = (this.isBorderWrapActive || player.isBorderWrapEnabled);
-    if (shouldWrap) {
+    if (this.isBorderWrapActive || player.isBorderWrapEnabled) {
         if (x < 0) player.position.x = width;
         if (x > width) player.position.x = 0;
         if (y < 0) player.position.y = height;
@@ -47,43 +45,43 @@ export class GameState {
         return true;
     }
 
-    if (player.isInvincible) {
-        return false;
-    }
+    if (player.isInvincible) return false;
 
-    // Check trail collisions with dynamic radius
-    return this.players.some(otherPlayer => {
-        // Increase the number of skipped points for square turn + fat line combination
-        const skipPoints = player === otherPlayer ? 
-            (player.isSquareTurn ? 20 : 10) * (player.currentLineWidth / player.defaultLineWidth) : 0;
-            
-        const trailToCheck = otherPlayer === player ? 
-            otherPlayer.trail.slice(0, -skipPoints) : otherPlayer.trail;
+    const checkPlayerCollision = (player, otherPlayer, currentRadius, skipPoints = 0) => {
+        const trailToCheck = skipPoints ? 
+            otherPlayer.trail.slice(0, skipPoints) : 
+            otherPlayer.trail;
 
         let segmentIndex = 0;
         return trailToCheck.some((point, index) => {
             if (!point) return false;
 
-            // Update segment index if needed
             while (segmentIndex < otherPlayer.trailSegments.length - 1 && 
                    index >= otherPlayer.trailSegments[segmentIndex + 1].startIndex) {
                 segmentIndex++;
             }
 
-            // Get current segment width for collision
             const segmentWidth = otherPlayer.trailSegments[segmentIndex].width / 2;
-            const dx = point.x - x;
-            const dy = point.y - y;
+            const dx = point.x - player.position.x;
+            const dy = point.y - player.position.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             
-            // Add extra padding for square turn to prevent self-collision
-            const collisionPadding = player.isSquareTurn ? segmentWidth * 0.5 : 0;
-            
-            return distance < (currentRadius + segmentWidth + collisionPadding);
+            return distance < (currentRadius + segmentWidth);
         });
+    };
+
+    return this.players.some(otherPlayer => {
+        if (otherPlayer !== player) return checkPlayerCollision(player, otherPlayer, currentRadius);
+        
+        const skipBase = 15;
+        const widthSkip = Math.max(1, player.currentLineWidth / player.defaultLineWidth) * skipBase;
+        const speedSkip = Math.max(1, player.defaultSpeed / player.speed) * widthSkip;
+        const finalSkip = Math.ceil(player.isSquareTurn ? speedSkip * 1.5 : speedSkip);
+        
+        return checkPlayerCollision(player, otherPlayer, currentRadius, -finalSkip);
     });
 }
-   updatePowerUps() {
+  updatePowerUps() {
     // Update existing powerups
     this.powerUps = this.powerUps.filter(powerUp => {
         if (!powerUp.collected) {

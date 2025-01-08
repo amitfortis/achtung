@@ -201,34 +201,34 @@ export class Player {
         }
     }
 
-    handleEffectExpiration(type) {
-        switch (type) {
-            case 'swap':
-                if (!this.hasEffect('swap')) {
-                    this.swapControls();
-                    this.headColor = this.defaultHeadColor;
-                }
-                break;
-            case 'squareTurn':
-                if (!this.hasEffect('squareTurn')) {
-                    this.isSquareTurn = false;
-                    this.isSquareHead = false;
-                }
-                break;
-            case 'invincible':
-                if (!this.hasEffect('invincible')) {
-                    this.isInvincible = false;
-                    this.addTrailGap();
-                }
-                break;
-            case 'borderWrap':
-                if (!this.hasEffect('borderWrap')) {
-                    this.isBorderWrapEnabled = false;
-                }
-                break;
-        }
+   handleEffectExpiration(type) {
+    switch (type) {
+        case 'swap':
+            if (!this.hasEffect('swap')) {
+                this.swapControls();
+                this.headColor = this.defaultHeadColor;
+            }
+            break;
+        case 'squareTurn':
+            if (!this.hasEffect('squareTurn')) {
+                this.isSquareTurn = false;
+                this.isSquareHead = false;
+                this.addTrailGap(); // Add gap to prevent self-collision during transition
+            }
+            break;
+        case 'invincible':
+            if (!this.hasEffect('invincible')) {
+                this.isInvincible = false;
+                this.addTrailGap();
+            }
+            break;
+        case 'borderWrap':
+            if (!this.hasEffect('borderWrap')) {
+                this.isBorderWrapEnabled = false;
+            }
+            break;
     }
-
+}
     hasEffect(type) {
         switch (type) {
             case 'speed':
@@ -280,28 +280,38 @@ export class Player {
         }
     }
 
-    move() {
-        this.updateEffects();
-        
-        this.gapCounter++;
-        if (this.gapCounter >= this.gapInterval) {
-            if (!this.isGap && !this.isInvincible) {
-                this.addTrailGap();
-                this.isGap = true;
+   move() {
+    this.updateEffects();
+    
+    this.gapCounter++;
+    if (this.gapCounter >= this.gapInterval) {
+        if (!this.isGap && !this.isInvincible) {
+            this.addTrailGap();
+            this.isGap = true;
+        }
+        if (this.gapCounter >= this.gapInterval + this.gapLength) {
+            this.gapCounter = 0;
+            this.isGap = false;
+            this.gapInterval = Math.random() * 400 + 200;
+        }
+    } else if (!this.isGap && !this.isInvincible) {
+        // Add distance check to prevent too-dense trail points when moving slowly
+        const lastPoint = this.trail[this.trail.length - 1];
+        if (lastPoint) {
+            const dx = this.position.x - lastPoint.x;
+            const dy = this.position.y - lastPoint.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance >= this.speed * 0.5) { // Only add points when moved sufficient distance
+                this.addTrailPoint();
             }
-            if (this.gapCounter >= this.gapInterval + this.gapLength) {
-                this.gapCounter = 0;
-                this.isGap = false;
-                this.gapInterval = Math.random() * 400 + 200;
-            }
-        } else if (!this.isGap && !this.isInvincible) {
+        } else {
             this.addTrailPoint();
         }
-
-        this.position.x += Math.cos(this.angle) * this.speed;
-        this.position.y += Math.sin(this.angle) * this.speed;
     }
 
+    this.position.x += Math.cos(this.angle) * this.speed;
+    this.position.y += Math.sin(this.angle) * this.speed;
+}
     turn(direction) {
         if (this.isSquareTurn) {
             // Snap to 90-degree angles
